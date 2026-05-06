@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>两步验证 Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 { font-size: 1.6rem; margin-bottom: 2rem; color: #fff; letter-spacing: .02em; }
+    h2 { font-size: 1.1rem; color: #bbb; margin-bottom: 1.2rem; }
+    h3 { font-size: .95rem; color: #999; margin-bottom: .8rem; }
+
+    .card {
+      background: #1c1c1e;
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 420px;
+      margin-bottom: 1.2rem;
+    }
+
+    .row { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .col { display: flex; flex-direction: column; gap: .8rem; }
+
+    input[type=text], input[type=password], input[type=email] {
+      background: #2c2c2e;
+      border: 1px solid #3a3a3c;
+      border-radius: 10px;
+      color: #e0e0e0;
+      padding: .6rem .9rem;
+      font-size: .95rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #636366; }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .9rem;
+      font-weight: 600;
+      padding: .6rem 1.1rem;
+      transition: opacity .15s;
+    }
+    button:active { opacity: .7; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-primary   { background: #0a84ff; color: #fff; }
+    .btn-secondary { background: #2c2c2e; color: #e0e0e0; border: 1px solid #3a3a3c; }
+    .btn-danger    { background: #ff3b30; color: #fff; }
+    .btn-success   { background: #30d158; color: #000; }
+    .btn-full      { width: 100%; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #2c2c2e;
+      margin: 1rem 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: .15rem .5rem;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+    .badge-green  { background: #0d3320; color: #30d158; }
+    .badge-gray   { background: #2c2c2e; color: #8e8e93; }
+    .badge-orange { background: #3a2800; color: #ff9f0a; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .5rem 0;
+    }
+    .status-label { font-size: .95rem; }
+    .status-sub   { font-size: .78rem; color: #636366; margin-top: .15rem; }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 13px;
+      background: #3a3a3c;
+      transition: background .2s;
+      cursor: pointer;
+    }
+    .toggle input:checked + .toggle-track { background: #30d158; }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform .2s;
+      pointer-events: none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+    .msg {
+      font-size: .85rem;
+      border-radius: 8px;
+      padding: .5rem .8rem;
+      margin-top: .6rem;
+    }
+    .msg-error   { background: #3a0d0d; color: #ff6b6b; }
+    .msg-success { background: #0d2f1a; color: #6ee79a; }
+    .msg-info    { background: #0d1f3a; color: #70b8ff; }
+
+    #qrImg { display: block; border-radius: 8px; margin: .6rem auto; max-width: 200px; }
+
+    .method-btn {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      padding: .8rem 1rem;
+      background: #2c2c2e;
+      border: 1px solid #3a3a3c;
+      border-radius: 12px;
+      color: #e0e0e0;
+      font-size: .95rem;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: .5rem;
+      transition: background .15s;
+      text-align: left;
+    }
+    .method-btn:hover { background: #3a3a3c; }
+    .method-icon { font-size: 1.3rem; }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+<h1>两步验证 Demo</h1>
+
+<!-- ═══════════════════════════════════════════════════ 1. Auth section -->
+<div id="authSection" class="card">
+  <h2>登录 / 注册</h2>
+
+  <div class="col" style="margin-bottom:1rem">
+    <h3>登录</h3>
+    <input id="loginUser" type="text"     placeholder="用户名" />
+    <input id="loginPass" type="password" placeholder="密码" />
+    <button class="btn-primary btn-full" onclick="login()">登录</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="col">
+    <h3>注册新账号</h3>
+    <input id="regUser"  type="text"     placeholder="用户名" />
+    <input id="regPass"  type="password" placeholder="密码" />
+    <input id="regEmail" type="email"    placeholder="邮箱" />
+    <button class="btn-secondary btn-full" onclick="register()">注册</button>
+    <div id="regMsg"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ 2. 2FA verification -->
+<div id="twoFASection" class="card" hidden>
+  <h2>二步验证</h2>
+  <p style="color:#8e8e93;font-size:.85rem;margin-bottom:1rem">密码验证通过，请完成第二步验证。</p>
+
+  <!-- TOTP -->
+  <div id="totpLoginArea" hidden>
+    <button class="method-btn" onclick="togglePanel('totpPanel')">
+      <span class="method-icon">🔐</span> 动态口令（TOTP）
+    </button>
+    <div id="totpPanel" hidden style="padding:.5rem 0 .8rem">
+      <input id="totpLoginCode" type="text" placeholder="输入 6 位动态口令" maxlength="6" />
+      <button class="btn-primary btn-full" style="margin-top:.5rem" onclick="loginTOTP()">验证</button>
+      <div id="totpLoginMsg"></div>
+    </div>
+  </div>
+
+  <!-- Passkey -->
+  <div id="passkeyLoginArea" hidden>
+    <button class="method-btn" onclick="loginPasskey()">
+      <span class="method-icon">🔑</span> 设备通行密钥（Passkey）
+    </button>
+    <div id="passkeyLoginMsg"></div>
+  </div>
+
+  <!-- Email OTP (always available) -->
+  <div>
+    <button class="method-btn" onclick="togglePanel('emailPanel')">
+      <span class="method-icon">📧</span> 邮件验证码
+    </button>
+    <div id="emailPanel" hidden style="padding:.5rem 0 .8rem">
+      <button class="btn-secondary btn-full" onclick="sendEmailOTP()">发送验证码</button>
+      <div id="emailSendMsg"></div>
+      <input id="emailOTPCode" type="text" placeholder="输入邮件验证码" maxlength="6" style="margin-top:.5rem" />
+      <button class="btn-primary btn-full" style="margin-top:.5rem" onclick="loginEmail()">验证</button>
+      <div id="emailLoginMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ 3. Dashboard -->
+<div id="dashboard" hidden>
+
+  <!-- Profile -->
+  <div class="card">
+    <div class="status-row">
+      <div>
+        <div class="status-label" id="dashUser"></div>
+        <div class="status-sub"  id="dashEmail"></div>
+      </div>
+      <button class="btn-danger" onclick="logout()">退出</button>
+    </div>
+  </div>
+
+  <!-- 2FA global toggle -->
+  <div class="card">
+    <div class="status-row">
+      <div>
+        <div class="status-label">两步验证登录</div>
+        <div class="status-sub">开启后登录时需完成二次校验</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="toggle2FA" onchange="toggle2FA(this.checked)" />
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- TOTP row -->
+    <div class="status-row">
+      <div>
+        <div class="status-label">动态口令（TOTP）</div>
+        <div class="status-sub">使用 Google Authenticator 等 App</div>
+      </div>
+      <span id="totpBadge" class="badge badge-gray">未设置</span>
+    </div>
+    <div class="row" style="margin-top:.5rem">
+      <button class="btn-secondary" onclick="setupTOTP()">绑定 / 重新绑定</button>
+      <button id="totpDisableBtn" class="btn-danger" hidden onclick="disableTOTP()">停用</button>
+    </div>
+
+    <!-- TOTP setup panel -->
+    <div id="totpSetupPanel" hidden style="margin-top:1rem">
+      <p style="font-size:.82rem;color:#8e8e93;margin-bottom:.5rem">用 Authenticator App 扫描二维码，然后输入当前显示的 6 位数字完成绑定。</p>
+      <img id="qrImg" alt="QR Code" />
+      <p style="font-size:.78rem;color:#636366;word-break:break-all;margin-bottom:.5rem">
+        手动输入 Secret：<span id="totpSecretText" style="color:#ebebf5"></span>
+      </p>
+      <input id="totpActivateCode" type="text" placeholder="输入 6 位验证码激活" maxlength="6" />
+      <button class="btn-success btn-full" style="margin-top:.5rem" onclick="activateTOTP()">激活</button>
+      <div id="totpSetupMsg"></div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Passkey row -->
+    <div class="status-row">
+      <div>
+        <div class="status-label">设备通行密钥（Passkey）</div>
+        <div class="status-sub" id="passkeyCountLabel">使用指纹 / Face ID 等生物识别</div>
+      </div>
+      <span id="passkeyBadge" class="badge badge-gray">未设置</span>
+    </div>
+    <div class="row" style="margin-top:.5rem">
+      <button class="btn-secondary" id="passkeyRegBtn" onclick="registerPasskey()">注册通行密钥</button>
+    </div>
+    <div id="passkeyRegMsg"></div>
+
+    <hr class="divider" />
+
+    <!-- Email row -->
+    <div class="status-row">
+      <div>
+        <div class="status-label">邮件验证码</div>
+        <div class="status-sub">每次登录时发送到邮箱，无需额外设置</div>
+      </div>
+      <span class="badge badge-green">已就绪</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function show(id)  { document.getElementById(id).hidden = false; }
+function hide(id)  { document.getElementById(id).hidden = true; }
+function togglePanel(id) {
+  const el = document.getElementById(id);
+  el.hidden = !el.hidden;
+}
+
+function setMsg(id, text, type = 'info') {
+  const el = document.getElementById(id);
+  el.className = 'msg msg-' + type;
+  el.textContent = text;
+}
+
+async function api(method, path, body) {
+  const opts = { method, credentials: 'same-origin', headers: {} };
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, opts);
+  const json = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data: json };
+}
+
+// ─── base64url ↔ ArrayBuffer (required for WebAuthn) ─────────────────────────
+
+function b64urlToBuffer(b64) {
+  const base64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(base64);
+  return Uint8Array.from(bin, c => c.charCodeAt(0)).buffer;
+}
+
+function bufferToB64url(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  bytes.forEach(b => (bin += String.fromCharCode(b)));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// Recursively convert all base64url strings in the options object (challenge,
+// user.id, allowCredentials[].id, excludeCredentials[].id) to ArrayBuffers.
+function prepareWebAuthnOptions(opts) {
+  const pk = opts.publicKey;
+  if (pk.challenge)    pk.challenge    = b64urlToBuffer(pk.challenge);
+  if (pk.user?.id)     pk.user.id      = b64urlToBuffer(pk.user.id);
+  if (pk.allowCredentials) {
+    pk.allowCredentials = pk.allowCredentials.map(c => ({ ...c, id: b64urlToBuffer(c.id) }));
+  }
+  if (pk.excludeCredentials) {
+    pk.excludeCredentials = pk.excludeCredentials.map(c => ({ ...c, id: b64urlToBuffer(c.id) }));
+  }
+  return opts;
+}
+
+// Serialize the PublicKeyCredential returned by the browser into the JSON format
+// that go-webauthn expects.
+function credentialToJSON(cred) {
+  const json = {
+    id:   cred.id,
+    rawId: bufferToB64url(cred.rawId),
+    type: cred.type,
+    clientExtensionResults: cred.getClientExtensionResults?.() ?? {},
+  };
+  const r = cred.response;
+  if (r.attestationObject) {
+    // Registration response
+    json.response = {
+      clientDataJSON:    bufferToB64url(r.clientDataJSON),
+      attestationObject: bufferToB64url(r.attestationObject),
+    };
+  } else {
+    // Authentication response
+    json.response = {
+      clientDataJSON:    bufferToB64url(r.clientDataJSON),
+      authenticatorData: bufferToB64url(r.authenticatorData),
+      signature:         bufferToB64url(r.signature),
+      userHandle:        r.userHandle ? bufferToB64url(r.userHandle) : null,
+    };
+  }
+  return json;
+}
+
+// ─── Page init ────────────────────────────────────────────────────────────────
+
+let currentUser = null; // filled after full login
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const { ok, data } = await api('GET', '/api/me');
+  if (ok) {
+    currentUser = data;
+    showDashboard(data);
+  } else {
+    show('authSection');
+  }
+});
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+async function register() {
+  const username = document.getElementById('regUser').value.trim();
+  const password = document.getElementById('regPass').value;
+  const email    = document.getElementById('regEmail').value.trim();
+  if (!username || !password || !email) {
+    return setMsg('regMsg', '请填写所有字段', 'error');
+  }
+  const { ok, data } = await api('POST', '/api/register', { username, password, email });
+  if (ok) {
+    setMsg('regMsg', '注册成功，请登录', 'success');
+  } else {
+    setMsg('regMsg', data.error || '注册失败', 'error');
+  }
+}
+
+async function login() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (!username || !password) return setMsg('loginMsg', '请输入用户名和密码', 'error');
+
+  const { ok, data } = await api('POST', '/api/login', { username, password });
+  if (!ok) return setMsg('loginMsg', data.error || '登录失败', 'error');
+
+  if (data.step === 2) {
+    // 2FA disabled — fully logged in
+    const me = await api('GET', '/api/me');
+    currentUser = me.data;
+    hide('authSection');
+    showDashboard(me.data);
+  } else {
+    // step === 1: password ok, need 2FA
+    hide('authSection');
+    show('twoFASection');
+    if (data.totpEnabled)    show('totpLoginArea');
+    if (data.passkeyEnabled) show('passkeyLoginArea');
+  }
+}
+
+async function logout() {
+  await api('POST', '/api/logout');
+  currentUser = null;
+  hide('dashboard');
+  hide('twoFASection');
+  show('authSection');
+  // reset 2FA section state
+  ['totpPanel','emailPanel'].forEach(hide);
+}
+
+// ─── 2FA login ────────────────────────────────────────────────────────────────
+
+async function loginTOTP() {
+  const code = document.getElementById('totpLoginCode').value.trim();
+  const { ok, data } = await api('POST', '/api/login/2fa/totp', { code });
+  if (!ok) return setMsg('totpLoginMsg', data.error || '验证失败', 'error');
+  await finishLogin();
+}
+
+async function loginPasskey() {
+  setMsg('passkeyLoginMsg', '请在弹出窗口中完成验证…', 'info');
+  try {
+    const r1 = await api('POST', '/api/login/2fa/passkey/begin');
+    if (!r1.ok) return setMsg('passkeyLoginMsg', r1.data.error, 'error');
+
+    const options = prepareWebAuthnOptions(r1.data);
+    const assertion = await navigator.credentials.get(options);
+
+    const r2 = await fetch('/api/login/2fa/passkey/finish', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentialToJSON(assertion)),
+    });
+    const d2 = await r2.json();
+    if (!r2.ok) return setMsg('passkeyLoginMsg', d2.error, 'error');
+
+    await finishLogin();
+  } catch (e) {
+    setMsg('passkeyLoginMsg', e.message || '验证失败', 'error');
+  }
+}
+
+async function sendEmailOTP() {
+  const { ok, data } = await api('POST', '/api/login/2fa/email/send');
+  if (ok) {
+    const debugNote = data.debug_code ? `（调试码：${data.debug_code}）` : '';
+    setMsg('emailSendMsg', data.message + debugNote, 'success');
+  } else {
+    setMsg('emailSendMsg', data.error || '发送失败', 'error');
+  }
+}
+
+async function loginEmail() {
+  const code = document.getElementById('emailOTPCode').value.trim();
+  const { ok, data } = await api('POST', '/api/login/2fa/email/verify', { code });
+  if (!ok) return setMsg('emailLoginMsg', data.error || '验证失败', 'error');
+  await finishLogin();
+}
+
+async function finishLogin() {
+  const { ok, data } = await api('GET', '/api/me');
+  if (!ok) return;
+  currentUser = data;
+  hide('twoFASection');
+  ['totpPanel','emailPanel'].forEach(hide);
+  showDashboard(data);
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+function showDashboard(user) {
+  document.getElementById('dashUser').textContent  = '👤 ' + user.username;
+  document.getElementById('dashEmail').textContent = user.email;
+  document.getElementById('toggle2FA').checked     = user.twoFAEnabled;
+  updateTOTPBadge(user.totpEnabled);
+  updatePasskeyBadge(user.passkeyEnabled, user.passkeyCount);
+  show('dashboard');
+}
+
+function updateTOTPBadge(enabled) {
+  const badge = document.getElementById('totpBadge');
+  const disBtn = document.getElementById('totpDisableBtn');
+  if (enabled) {
+    badge.className = 'badge badge-green';
+    badge.textContent = '已启用';
+    disBtn.hidden = false;
+  } else {
+    badge.className = 'badge badge-gray';
+    badge.textContent = '未设置';
+    disBtn.hidden = true;
+  }
+}
+
+function updatePasskeyBadge(enabled, count) {
+  const badge = document.getElementById('passkeyBadge');
+  const label = document.getElementById('passkeyCountLabel');
+  if (enabled && count > 0) {
+    badge.className = 'badge badge-green';
+    badge.textContent = `已绑定 ${count} 个`;
+    label.textContent = `已绑定 ${count} 个通行密钥`;
+  } else {
+    badge.className = 'badge badge-gray';
+    badge.textContent = '未设置';
+    label.textContent = '使用指纹 / Face ID 等生物识别';
+  }
+}
+
+async function toggle2FA(enabled) {
+  const { ok, data } = await api('POST', '/api/2fa/toggle', { enabled });
+  if (!ok) {
+    // roll back the toggle visually
+    document.getElementById('toggle2FA').checked = !enabled;
+  }
+}
+
+// ─── TOTP setup ───────────────────────────────────────────────────────────────
+
+async function setupTOTP() {
+  const { ok, data } = await api('POST', '/api/2fa/totp/setup');
+  if (!ok) return alert(data.error);
+
+  document.getElementById('qrImg').src          = data.qrCode;
+  document.getElementById('totpSecretText').textContent = data.secret;
+  document.getElementById('totpActivateCode').value = '';
+  document.getElementById('totpSetupMsg').textContent  = '';
+  show('totpSetupPanel');
+}
+
+async function activateTOTP() {
+  const code = document.getElementById('totpActivateCode').value.trim();
+  const { ok, data } = await api('POST', '/api/2fa/totp/activate', { code });
+  if (!ok) return setMsg('totpSetupMsg', data.error || '激活失败', 'error');
+
+  setMsg('totpSetupMsg', 'TOTP 绑定成功！', 'success');
+  hide('totpSetupPanel');
+  currentUser.totpEnabled = true;
+  updateTOTPBadge(true);
+}
+
+async function disableTOTP() {
+  if (!confirm('确定要停用动态口令吗？')) return;
+  const { ok } = await api('POST', '/api/2fa/totp/disable');
+  if (ok) {
+    currentUser.totpEnabled = false;
+    updateTOTPBadge(false);
+    hide('totpSetupPanel');
+  }
+}
+
+// ─── Passkey setup ────────────────────────────────────────────────────────────
+
+async function registerPasskey() {
+  if (!window.PublicKeyCredential) {
+    return setMsg('passkeyRegMsg', '当前浏览器不支持 WebAuthn / Passkey', 'error');
+  }
+  setMsg('passkeyRegMsg', '请在弹出窗口中完成注册…', 'info');
+
+  try {
+    const r1 = await api('POST', '/api/2fa/passkey/register/begin');
+    if (!r1.ok) return setMsg('passkeyRegMsg', r1.data.error, 'error');
+
+    const options = prepareWebAuthnOptions(r1.data);
+    const credential = await navigator.credentials.create(options);
+
+    const r2 = await fetch('/api/2fa/passkey/register/finish', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentialToJSON(credential)),
+    });
+    const d2 = await r2.json();
+    if (!r2.ok) return setMsg('passkeyRegMsg', d2.error, 'error');
+
+    setMsg('passkeyRegMsg', '通行密钥注册成功！', 'success');
+    currentUser.passkeyEnabled = true;
+    currentUser.passkeyCount   = d2.passkeyCount;
+    updatePasskeyBadge(true, d2.passkeyCount);
+  } catch (e) {
+    setMsg('passkeyRegMsg', e.message || '注册失败', 'error');
+  }
+}
+</script>
+</body>
+</html>
